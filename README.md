@@ -1,36 +1,29 @@
-# Naranjo ADR Probability Scale
+# Naranjo ADR Probability Scale Web App
 
-Static web app สำหรับประเมินความน่าจะเป็นของอาการไม่พึงประสงค์จากยา โดยใช้ Naranjo ADR Probability Scale
+เว็บแอป Static Frontend สำหรับประเมิน Naranjo ADR Probability Scale สำหรับเภสัชกร รองรับ GitHub Pages โดยไม่ต้องมี Backend
 
-## ไฟล์ในชุดนี้
+## สิ่งที่ปรับปรุง
 
-- `index.html` — ไฟล์หลักสำหรับ deploy บน GitHub Pages
-- `.nojekyll` — ป้องกัน GitHub Pages ประมวลผลผ่าน Jekyll โดยไม่จำเป็น
+- เพิ่มส่วน “สรุป Naranjo” หลังประเมิน
+- สรุปเกณฑ์การให้คะแนนที่ตรงกับคำตอบของแต่ละข้อ
+- แยกปัจจัยสนับสนุน ปัจจัยที่ลดความเป็นไปได้ และข้อมูลที่ยังไม่ทราบ
+- เพิ่มข้อมูลประกอบการประเมิน เช่น ยาที่สงสัย อาการ วันที่เริ่มยา วันที่เกิดอาการ ผู้ประเมิน และหมายเหตุทางคลินิก
+- เพิ่มปุ่มคัดลอกสรุป พิมพ์/บันทึก PDF ดาวน์โหลด JSON และแก้ไขคำตอบเดิม
+- แยกไฟล์เป็น index.html, styles.css, app.js, data.js
+- ใช้ textContent/DOM API เพื่อลดความเสี่ยง XSS ในส่วนข้อมูลที่ผู้ใช้กรอก
+- เพิ่ม accessibility ด้วย fieldset/legend, aria-expanded และ aria-live
+- แก้การแปลผล Doubtful เป็นคะแนน ≤ 0
+- เพิ่มการบันทึก draft ใน localStorage และปุ่ม Reset จะล้างทั้งแบบฟอร์ม ผลลัพธ์ และข้อมูล draft ที่เคยบันทึกไว้
 
-## วิธี Deploy บน GitHub Pages แบบง่าย
+## การใช้งานบน GitHub Pages
 
 1. สร้าง repository ใหม่บน GitHub
-2. อัปโหลด `index.html` และ `.nojekyll` ไปที่ root ของ repository
-3. ไปที่ **Settings → Pages**
-4. ที่ **Build and deployment** เลือก **Deploy from a branch**
-5. เลือก branch เช่น `main` และ folder เป็น `/ (root)`
-6. กด Save แล้วรอ GitHub Pages publish เว็บไซต์
+2. อัปโหลดไฟล์ทั้งหมดในโฟลเดอร์นี้ไปที่ root ของ repository
+3. ไปที่ Settings > Pages
+4. เลือก Deploy from a branch
+5. เลือก branch `main` และ folder `/root`
+6. เปิด URL ที่ GitHub Pages สร้างให้
 
-> GitHub Pages ใช้ `index.html` เป็น entry file ของ static site ได้โดยตรง
+## Privacy
 
-## สิ่งที่ปรับปรุงในเวอร์ชันนี้
-
-- แก้ bug การแสดงคำตอบที่มีคะแนน `-1`
-- แก้ช่วงคะแนน Doubtful เป็น `≤ 0`
-- เพิ่ม progress bar ตอบครบ 10 ข้อ
-- เพิ่ม accessibility: `fieldset`, `legend`, `aria-expanded`, `aria-live`, focus result
-- เพิ่มปุ่มแสดง/ซ่อนเกณฑ์ทั้งหมด
-- เพิ่มช่องข้อมูลเคส ยาที่สงสัย ผู้ประเมิน และวันที่ประเมิน
-- เพิ่มหมายเหตุต่อข้อ
-- เพิ่ม copy result และ print / save PDF
-- ลดการใช้ `innerHTML` กับข้อมูล dynamic เพื่อลดความเสี่ยง XSS
-- ทำเป็นไฟล์ static พร้อม deploy โดยไม่ต้อง build
-
-## หมายเหตุทางคลินิก
-
-เครื่องมือนี้เป็นเพียงตัวช่วยประเมินเชิงระบบ ควรใช้ร่วมกับข้อมูลทางคลินิก การประเมินโดยแพทย์/เภสัชกร และบริบทของผู้ป่วยแต่ละราย
+เว็บแอปนี้ประมวลผลในเครื่องผู้ใช้ ไม่มี Backend และไม่มีการส่งข้อมูลผู้ป่วยออกนอกเครื่อง ยกเว้นผู้ใช้เลือกคัดลอก พิมพ์ หรือดาวน์โหลดไฟล์เอง
