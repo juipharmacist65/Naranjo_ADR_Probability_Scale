@@ -21,6 +21,21 @@ function scoreText(score) {
   return score >= 0 ? `+${score}` : `${score}`;
 }
 
+function setQuestionNoteVisibility(qid, expanded) {
+  const panel = document.getElementById(`note-panel-${qid}`);
+  const toggle = document.querySelector(`[data-note-toggle="${qid}"]`);
+  if (!panel || !toggle) return;
+
+  panel.classList.toggle('closed', !expanded);
+  toggle.textContent = expanded ? '− ซ่อนหมายเหตุ/หลักฐาน' : '➕ เพิ่มหมายเหตุ/หลักฐานประกอบข้อนี้';
+  toggle.setAttribute('aria-expanded', String(expanded));
+}
+
+function getQuestionNote(qid) {
+  const note = document.querySelector(`[name="noteQ${qid}"]`);
+  return note ? note.value.trim() : '';
+}
+
 function renderQuestions() {
   const container = document.getElementById('questionsContainer');
   container.innerHTML = '';
@@ -63,7 +78,35 @@ function renderQuestions() {
       optDiv.appendChild(label);
     });
     card.appendChild(optDiv);
+
+    const noteWrap = makeEl('div', 'question-note');
+    const noteToggle = makeEl('button', 'note-toggle', '➕ เพิ่มหมายเหตุ/หลักฐานประกอบข้อนี้');
+    noteToggle.type = 'button';
+    noteToggle.dataset.noteToggle = String(q.id);
+    noteToggle.setAttribute('aria-controls', `note-panel-${q.id}`);
+    noteToggle.setAttribute('aria-expanded', 'false');
+
+    const notePanel = makeEl('label', 'question-note-panel closed', 'หมายเหตุ/หลักฐานประกอบข้อนี้');
+    notePanel.id = `note-panel-${q.id}`;
+    const noteField = document.createElement('textarea');
+    noteField.name = `noteQ${q.id}`;
+    noteField.id = `noteQ${q.id}`;
+    noteField.className = 'question-note-textarea';
+    noteField.rows = 3;
+    noteField.dataset.questionNote = String(q.id);
+    noteField.placeholder = 'เช่น time course, lab, dechallenge/rechallenge, ประวัติเดิม หรือเหตุผลที่เลือกคำตอบข้อนี้';
+    const noteHelp = makeEl('span', 'note-help', 'ข้อมูลนี้จะถูกนำไปแสดงในผลลัพธ์ สรุปที่คัดลอก และไฟล์ JSON');
+    notePanel.append(noteField, noteHelp);
+    noteWrap.append(noteToggle, notePanel);
+    card.appendChild(noteWrap);
+
     container.appendChild(card);
+
+    noteToggle.addEventListener('click', () => {
+      const isExpanded = noteToggle.getAttribute('aria-expanded') === 'true';
+      setQuestionNoteVisibility(q.id, !isExpanded);
+      if (!isExpanded) noteField.focus();
+    });
 
     toggle.addEventListener('click', () => {
       const isClosed = critBox.classList.toggle('closed');
@@ -107,7 +150,8 @@ function collectAnswers() {
         answer,
         value: r.value,
         score,
-        criteria: q.criteria[r.value] || ''
+        criteria: q.criteria[r.value] || '',
+        note: getQuestionNote(qid)
       };
     })
     .sort((a, b) => a.qid - b.qid);
@@ -126,7 +170,8 @@ function renderList(title, items, emptyText) {
   const ul = document.createElement('ul');
   items.forEach((item) => {
     const li = document.createElement('li');
-    li.textContent = `ข้อ ${item.qid}: ${item.answer} (${scoreText(item.score)}) — ${item.criteria}`;
+    const note = item.note ? ` | หมายเหตุ/หลักฐาน: ${item.note}` : '';
+    li.textContent = `ข้อ ${item.qid}: ${item.answer} (${scoreText(item.score)}) — ${item.criteria}${note}`;
     ul.appendChild(li);
   });
   section.appendChild(ul);
@@ -184,20 +229,27 @@ function renderResult(report) {
   const detail = document.getElementById('resultDetail');
   detail.innerHTML = '';
   const header = makeEl('div', 'detail-row');
-  header.append(makeEl('div', '', 'คำถาม'), makeEl('div', '', 'คำตอบ/คะแนน'), makeEl('div', '', 'เกณฑ์ที่ใช้สรุป'));
+  header.append(makeEl('div', '', 'คำถาม'), makeEl('div', '', 'คำตอบ/คะแนน'), makeEl('div', '', 'เกณฑ์ / หมายเหตุประกอบ'));
   detail.appendChild(header);
   report.details.forEach((d) => {
     const row = makeEl('div', 'detail-row');
+    const evidence = makeEl('div');
+    evidence.appendChild(makeEl('div', '', d.criteria));
+    if (d.note) {
+      evidence.appendChild(makeEl('div', 'detail-note', `หมายเหตุ/หลักฐาน: ${d.note}`));
+    }
     row.append(
       makeEl('div', '', `ข้อ ${d.qid}: ${d.question}`),
       makeEl('div', 'detail-answer', `${d.answer} (${scoreText(d.score)})`),
-      makeEl('div', '', d.criteria)
+      evidence
     );
     detail.appendChild(row);
   });
 
-  document.getElementById('result').classList.add('visible');
-  document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const result = document.getElementById('result');
+  result.classList.add('visible');
+  result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  result.focus({ preventScroll: true });
 }
 
 function generatePlainSummary(report) {
@@ -205,6 +257,7 @@ function generatePlainSummary(report) {
   const reducing = report.details.filter(d => d.score < 0);
   const unknowns = report.details.filter(d => d.value === 'unknown');
   const ci = report.caseInfo;
+  const noted = report.details.filter(d => d.note);
   const lines = [
     'สรุป Naranjo',
     `คะแนนรวม: ${report.total} คะแนน`,
@@ -227,10 +280,15 @@ function generatePlainSummary(report) {
     ...(reducing.length ? reducing.map(d => `- ข้อ ${d.qid}: ${d.answer} (${scoreText(d.score)}) — ${d.criteria}`) : ['- ไม่มี']),
     '',
     `ข้อมูลที่ยังไม่ทราบ/ควรติดตาม (${unknowns.length} ข้อ):`,
-    ...(unknowns.length ? unknowns.map(d => `- ข้อ ${d.qid}: ${d.question} — ${d.criteria}`) : ['- ไม่มี']),
+    ...(unknowns.length ? unknowns.map(d => `- ข้อ ${d.qid}: ${d.question} — ${d.criteria}${d.note ? ` | หมายเหตุ/หลักฐาน: ${d.note}` : ''}`) : ['- ไม่มี']),
     '',
+    ...(noted.length ? [
+      'หมายเหตุ/หลักฐานประกอบรายข้อ:',
+      ...noted.map(d => `- ข้อ ${d.qid}: ${d.note}`),
+      ''
+    ] : []),
     'รายละเอียดรายข้อ:',
-    ...report.details.map(d => `ข้อ ${d.qid}: ${d.question} | ตอบ ${d.answer} (${scoreText(d.score)}) | เกณฑ์: ${d.criteria}`)
+    ...report.details.map(d => `ข้อ ${d.qid}: ${d.question} | ตอบ ${d.answer} (${scoreText(d.score)}) | เกณฑ์: ${d.criteria}${d.note ? ` | หมายเหตุ/หลักฐาน: ${d.note}` : ''}`)
   ];
   return lines.filter(line => line !== '').join('\n');
 }
@@ -238,9 +296,12 @@ function generatePlainSummary(report) {
 function saveDraft() {
   if (isResetting) return;
 
-  const data = { caseInfo: getCaseInfo(), answers: {} };
+  const data = { caseInfo: getCaseInfo(), answers: {}, questionNotes: {} };
   document.querySelectorAll('#naranjoForm input[type="radio"]:checked').forEach(r => {
     data.answers[r.name] = r.value;
+  });
+  document.querySelectorAll('[data-question-note]').forEach((note) => {
+    if (note.value.trim()) data.questionNotes[note.name] = note.value.trim();
   });
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
@@ -260,6 +321,15 @@ function restoreDraft() {
       Object.entries(data.answers).forEach(([name, value]) => {
         const radio = document.querySelector(`input[name="${name}"][value="${value}"]`);
         if (radio) radio.checked = true;
+      });
+    }
+    if (data.questionNotes) {
+      Object.entries(data.questionNotes).forEach(([name, value]) => {
+        const note = document.querySelector(`[name="${name}"]`);
+        if (!note) return;
+        note.value = value || '';
+        const qid = note.dataset.questionNote;
+        if (qid && note.value.trim()) setQuestionNoteVisibility(qid, true);
       });
     }
   } catch (error) {
@@ -306,6 +376,13 @@ function resetCriteriaPanels() {
   });
 }
 
+function resetQuestionNotePanels() {
+  document.querySelectorAll('[data-note-toggle]').forEach((btn) => {
+    const qid = btn.dataset.noteToggle;
+    if (qid) setQuestionNoteVisibility(qid, false);
+  });
+}
+
 function resetAll() {
   const form = document.getElementById('naranjoForm');
 
@@ -316,6 +393,7 @@ function resetAll() {
     clearFormValues(form);
     clearResult();
     resetCriteriaPanels();
+    resetQuestionNotePanels();
   } finally {
     isResetting = false;
   }
@@ -375,4 +453,4 @@ function bindEvents() {
 renderQuestions();
 restoreDraft();
 bindEvents();
-console.log('Naranjo Scale ready. Reset clears visible form values and saved local draft.');
+console.log('Naranjo Scale ready. Logo, question notes, autosave, and reset are active.');

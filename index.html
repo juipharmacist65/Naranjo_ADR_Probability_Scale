@@ -9,7 +9,17 @@
 <body>
   <div class="app-wrapper">
     <header class="app-header">
-      <div class="logo-mark" aria-hidden="true">ADR</div>
+      <div class="logo-container">
+        <img
+          class="header-logo"
+          src="https://lh5.googleusercontent.com/d/1r7PM1ogHIbxskvcauVIYaQOfSHXWGncO"
+          alt="Logo"
+          referrerpolicy="no-referrer"
+          loading="eager"
+          onerror="this.hidden=true;this.nextElementSibling.hidden=false;"
+        />
+        <span class="logo-fallback" hidden aria-hidden="true">ADR</span>
+      </div>
       <div class="header-text">
         <div class="badge">แบบประเมินทางเภสัชกรรม</div>
         <h1>Naranjo ADR Probability Scale</h1>
@@ -61,7 +71,7 @@
         </section>
       </form>
 
-      <section id="result" class="result-section" aria-live="polite" aria-labelledby="resultTitle">
+      <section id="result" class="result-section" aria-live="polite" aria-labelledby="resultTitle" tabindex="-1">
         <div class="result-header">
           <div>
             <h2 id="resultTitle">ผลการประเมิน</h2>
