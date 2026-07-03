@@ -1,6 +1,7 @@
 const questions = window.NARANJO_QUESTIONS || [];
 const STORAGE_KEY = 'naranjoAdrAssessment.v2';
 let latestReport = null;
+let isResetting = false;
 
 function getLevel(score) {
   if (score >= 9) return { key: 'definite', label: 'Definite (แน่นอน)', range: '≥ 9', desc: 'มีหลักฐานชัดเจนว่าอาการไม่พึงประสงค์เกิดจากยา' };
@@ -235,6 +236,8 @@ function generatePlainSummary(report) {
 }
 
 function saveDraft() {
+  if (isResetting) return;
+
   const data = { caseInfo: getCaseInfo(), answers: {} };
   document.querySelectorAll('#naranjoForm input[type="radio"]:checked').forEach(r => {
     data.answers[r.name] = r.value;
@@ -269,23 +272,54 @@ function clearPersistedForm() {
   sessionStorage.removeItem(STORAGE_KEY);
 }
 
-function resetAll() {
-  const form = document.getElementById('naranjoForm');
-  form.reset();
-  clearPersistedForm();
+function clearFormValues(form) {
+  form.querySelectorAll('input[type="radio"]').forEach((radio) => {
+    radio.checked = false;
+    radio.defaultChecked = false;
+    radio.removeAttribute('checked');
+  });
+
+  form.querySelectorAll('input[type="text"], input[type="date"], textarea').forEach((field) => {
+    field.value = '';
+    field.defaultValue = '';
+    field.removeAttribute('value');
+  });
+}
+
+function clearResult() {
   latestReport = null;
   document.getElementById('result').classList.remove('visible');
   document.getElementById('scoreDisplay').textContent = '0';
   document.getElementById('levelDisplay').textContent = '—';
+  document.getElementById('levelDisplay').className = 'result-level';
   document.getElementById('resultInterp').textContent = '';
   document.getElementById('naranjoSummary').innerHTML = '';
   document.getElementById('caseSummary').innerHTML = '';
   document.getElementById('resultDetail').innerHTML = '';
+}
+
+function resetCriteriaPanels() {
   document.querySelectorAll('.criteria-box').forEach(box => box.classList.remove('closed'));
   document.querySelectorAll('.criteria-toggle').forEach(btn => {
     btn.textContent = '📄 ซ่อนเกณฑ์';
     btn.setAttribute('aria-expanded', 'true');
   });
+}
+
+function resetAll() {
+  const form = document.getElementById('naranjoForm');
+
+  isResetting = true;
+  try {
+    clearPersistedForm();
+    form.reset();
+    clearFormValues(form);
+    clearResult();
+    resetCriteriaPanels();
+  } finally {
+    isResetting = false;
+  }
+
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -341,4 +375,4 @@ function bindEvents() {
 renderQuestions();
 restoreDraft();
 bindEvents();
-console.log('Naranjo Scale ready. Reset clears form and saved local draft.');
+console.log('Naranjo Scale ready. Reset clears visible form values and saved local draft.');
